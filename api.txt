@@ -1,0 +1,2 @@
+3zvWMwfHJ4U5BIQK
+mongodb+srv://sainicc01_db_user:3zvWMwfHJ4U5BIQK@cluster0.vimxrxt.mongodb.net/?appName=Cluster0

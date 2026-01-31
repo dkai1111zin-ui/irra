@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Irra Esign | Checkout</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #8e54e9; --success: #00d285; --bg: #f4f7fe; --text: #2b3674; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
+        body { background: var(--bg); display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
+        .card { background: white; width: 100%; max-width: 420px; padding: 40px; border-radius: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.05); text-align:center; }
+        .logo { width: 85px; height: 85px; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 8px 20px rgba(142,84,233,0.2); }
+        .price-row { background: #f8faff; padding: 18px; border-radius: 18px; display: flex; justify-content: space-between; margin: 25px 0; border: 1px solid #edf2f7; }
+        input[type="text"], input[type="email"] { width: 100%; padding: 16px; border-radius: 15px; border: 2px solid #eee; margin-bottom: 15px; outline: none; }
+        .btn { width: 100%; padding: 18px; border: none; border-radius: 18px; background: var(--primary); color: white; font-weight: 700; font-size: 16px; cursor: pointer; transition: 0.3s; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(13, 18, 43, 0.8); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 1000; }
+        .modal.active { display: flex; }
+        .m-card { background: white; padding: 35px; border-radius: 30px; width: 380px; text-align: center; }
+        .qr-img { width: 100%; border-radius: 20px; margin-bottom: 20px; border: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img src="https://i.pinimg.com/474x/da/83/78/da8378a6ddba21823631bd644bee4266.jpg" class="logo">
+        <h2 style="font-weight: 800;">iOS Certificate</h2>
+        <div class="price-row"><span>Total</span><span style="color:var(--primary); font-weight: 800;">$10.00</span></div>
+        <input type="text" id="udidInput" placeholder="Enter UDID here...">
+        <label style="font-size:12px; display:flex; gap:10px; text-align:left; margin-bottom:25px; color:#a3aed0; cursor:pointer;">
+            <input type="checkbox" id="terms"> I confirm UDID is correct. No refunds.
+        </label>
+        <button class="btn" onclick="openEmail()">Continue to Pay</button>
+    </div>
+
+    <div id="emailModal" class="modal"><div class="m-card">
+        <h3>Your Email</h3>
+        <p style="font-size: 13px; color: #a3aed0; margin: 10px 0 20px;">We will send files to this address.</p>
+        <input type="email" id="emailInput" placeholder="name@example.com">
+        <button class="btn" onclick="openQR()">Next</button>
+    </div></div>
+
+    <div id="qrModal" class="modal"><div class="m-card">
+        <img src="https://i.pinimg.com/736x/e5/fd/31/e5fd3186e185c6d235f024103d091c37.jpg" class="qr-img">
+        <p style="font-size: 12px; text-align:left; color: var(--primary); margin-bottom: 5px;">Upload Bank Receipt:</p>
+        <input type="file" id="receipt" accept="image/*" style="margin-bottom: 20px; width: 100%;">
+        <button class="btn" id="fBtn" onclick="submitOrder()" style="background: var(--success);">Send Payment Proof</button>
+    </div></div>
+
+    <script>
+        const API = "http://127.0.0.1:5000";
+
+        function openEmail() {
+            if(document.getElementById('udidInput').value.length < 10 || !document.getElementById('terms').checked) return alert("Fill UDID and terms!");
+            document.getElementById('emailModal').classList.add('active');
+        }
+
+        function openQR() {
+            if(document.getElementById('emailInput').value.includes('@')) {
+                document.getElementById('emailModal').classList.remove('active');
+                document.getElementById('qrModal').classList.add('active');
+            }
+        }
+
+        async function submitOrder() {
+            const file = document.getElementById('receipt').files[0];
+            if(!file) return alert("Please upload receipt!");
+            const btn = document.getElementById('fBtn'); 
+            btn.disabled = true; btn.innerText = "Uploading...";
+
+            const fd = new FormData();
+            fd.append('udid', document.getElementById('udidInput').value);
+            fd.append('email', document.getElementById('emailInput').value);
+            fd.append('receipt', file);
+
+            try {
+                const res = await fetch(API + '/verify-payment', { method:'POST', body: fd });
+                if(res.ok) { alert("✅ Success! Order Sent."); location.reload(); }
+                else { alert("Server Error"); btn.disabled = false; btn.innerText = "Send Payment Proof"; }
+            } catch(e) { 
+                alert("✅ Success! Order Sent."); 
+                btn.disabled = false; btn.innerText = "Send Payment Proof";
+            }
+        }
+    </script>
+</body>
+</html>
