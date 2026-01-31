@@ -3,28 +3,24 @@ import uuid
 import requests
 import smtplib
 from email.mime.text import MIMEText
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from pymongo import MongoClient
 
-# Use absolute paths to avoid folder issues on Render
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-app = Flask(__name__, 
-            template_folder=os.path.join(BASE_DIR, '../frontend'), 
-            static_folder=os.path.join(BASE_DIR, '../frontend'))
+app = Flask(__name__)
 
-# FIX: Allow all origins so your frontend can talk to Render
+# IMPORTANT: Allow your Frontend URL here (or "*" to allow everything)
 CORS(app)
 
-# --- DATABASE SETUP (MongoDB Atlas) ---
+# --- DATABASE SETUP ---
 MONGO_URI = "mongodb+srv://sainicc01_db_user:3zvWMwfHJ4U5BIQK@cluster0.vimxrxt.mongodb.net/?appName=Cluster0"
 client = MongoClient(MONGO_URI)
 db = client['irra_esign_db']
 orders_col = db['orders']
 
 # --- FOLDER SETUP ---
-UPLOAD_FOLDER = os.path.join(BASE_DIR, '../uploads')
+UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -46,6 +42,10 @@ def send_gmail_logic(to_email, order_id, link):
         return True
     except: return False
 
+@app.route('/')
+def status():
+    return jsonify({"status": "Backend is Online", "version": "2.0"})
+
 @app.route('/uploads/<filename>')
 def serve_receipt(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
@@ -61,8 +61,6 @@ def verify_payment():
         email = request.form.get('email')
         udid = request.form.get('udid')
         file = request.files.get('receipt')
-        if not file: return jsonify({"success": False}), 400
-
         order_id = str(uuid.uuid4())[:8].upper()
         filename = secure_filename(f"{order_id}_{file.filename}")
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
@@ -73,7 +71,7 @@ def verify_payment():
         }
         orders_col.insert_one(order_data)
 
-        # FIX: Dynamically detect the host URL for Telegram link
+        # Telegram notification
         receipt_link = f"{request.host_url.rstrip('/')}/uploads/{filename}"
         msg = f"🔔 <b>NEW ORDER</b>\n\n🆔 ID: {order_id}\n📧 Email: {email}\n📱 UDID: {udid}\n🖼️ <a href='{receipt_link}'>View Receipt</a>"
         requests.post(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage", json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"})
@@ -102,6 +100,5 @@ def delete_order(order_id):
     return jsonify({"success": True})
 
 if __name__ == '__main__':
-    # Required for Render
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
