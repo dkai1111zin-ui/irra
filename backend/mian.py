@@ -10,7 +10,7 @@ from pymongo import MongoClient
 
 app = Flask(__name__)
 
-# IMPORTANT: Allow your Frontend URL here (or "*" to allow everything)
+# អនុញ្ញាតឱ្យគ្រប់វេបសាយ (Frontend) អាចប្រើ API នេះបាន
 CORS(app)
 
 # --- DATABASE SETUP ---
@@ -40,11 +40,13 @@ def send_gmail_logic(to_email, order_id, link):
             server.login(GMAIL_USER, GMAIL_APP_PASS)
             server.send_message(msg)
         return True
-    except: return False
+    except Exception as e:
+        print(f"SMTP Error: {e}")
+        return False
 
 @app.route('/')
 def status():
-    return jsonify({"status": "Backend is Online", "version": "2.0"})
+    return jsonify({"status": "Irra Backend Online", "msg": "API is working!"})
 
 @app.route('/uploads/<filename>')
 def serve_receipt(filename):
@@ -71,8 +73,8 @@ def verify_payment():
         }
         orders_col.insert_one(order_data)
 
-        # Telegram notification
-        receipt_link = f"{request.host_url.rstrip('/')}/uploads/{filename}"
+        # ផ្លាស់ប្ដូរ URL ឱ្យទៅតាម Render ដោយស្វ័យប្រវត្តិ
+        receipt_link = f"https://{request.host}/uploads/{filename}"
         msg = f"🔔 <b>NEW ORDER</b>\n\n🆔 ID: {order_id}\n📧 Email: {email}\n📱 UDID: {udid}\n🖼️ <a href='{receipt_link}'>View Receipt</a>"
         requests.post(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage", json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"})
         return jsonify({"success": True})
@@ -92,7 +94,7 @@ def api_send_email():
     if order and order.get('download_link'):
         if send_gmail_logic(order['email'], oid, order['download_link']):
             return jsonify({"success": True})
-    return jsonify({"success": False}), 500
+    return jsonify({"success": False, "msg": "Email fail"}), 500
 
 @app.route('/api/delete-order/<order_id>', methods=['DELETE'])
 def delete_order(order_id):
